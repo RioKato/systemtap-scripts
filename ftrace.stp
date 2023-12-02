@@ -1,24 +1,30 @@
-// stap $0 -x PID
+#!/usr/bin/stap
 
-probe begin { printf("[begin] pid=%d,procname=%s\n", pid(), execname()); }
-probe end { printf("[end] pid=%d,procname=%s\n", pid(), execname()); }
+@define GREEN %( "\033[32m" %)
+@define PURPLE %( "\033[35m" %)
+@define END %( "\033[0m" %)
 
-probe process.function("*").call {
+function pcall(color, parms) {
   if (pid() == target())
-    printf("%s -> %s(%s) @%x\n", thread_indent(1), ppfunc(), $$parms, addr());
+    printf("%s%#x%s %s -> %s(%s)\n", color, addr(), @END, thread_indent(1),
+           ppfunc(), parms);
 }
 
-probe process.function("*").return {
+function pret(color, value) {
   if (pid() == target())
-    printf("%s <- %s %s\n", thread_indent(-1), ppfunc(), $$return);
+    printf("%s%#x%s %s <- %s(): %s\n", color, addr(), @END, thread_indent(-1),
+           ppfunc(), value);
 }
 
-probe process.library("libc.so.6").function("*").call {
-  if (pid() == target())
-    printf("%s -> %s(%s) @%x\n", thread_indent(1), ppfunc(), $$parms, addr());
-}
+probe begin { printf("[begin] %d: %s\n", pid(), execname()); }
+probe end { printf("[end]\n"); }
 
-probe process.library("libc.so.6").function("*").return {
-  if (pid() == target())
-    printf("%s <- %s %s\n", thread_indent(-1), ppfunc(), $$return);
+probe process(@1).function("*").call { pcall(@GREEN, $$parms); }
+probe process(@1).function("*").return { pret(@GREEN, $$return); }
+
+probe process(@1).library("/usr/lib/libc.so.6").function("*").call {
+  pcall(@PURPLE, $$parms);
+}
+probe process(@1).library("/usr/lib/libc.so.6").function("*").return {
+  pret(@PURPLE, $$return);
 }
