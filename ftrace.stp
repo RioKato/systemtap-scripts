@@ -1,0 +1,24 @@
+// stap $0 -x PID
+
+probe begin { printf("[begin] pid=%d,procname=%s\n", pid(), execname()); }
+probe end { printf("[end] pid=%d,procname=%s\n", pid(), execname()); }
+
+probe process.function("*").call {
+  if (pid() == target())
+    printf("%s -> %s(%s) @%x\n", thread_indent(1), ppfunc(), $$parms, addr());
+}
+
+probe process.function("*").return {
+  if (pid() == target())
+    printf("%s <- %s %s\n", thread_indent(-1), ppfunc(), $$return);
+}
+
+probe process.library("libc.so.6").function("*").call {
+  if (pid() == target())
+    printf("%s -> %s(%s) @%x\n", thread_indent(1), ppfunc(), $$parms, addr());
+}
+
+probe process.library("libc.so.6").function("*").return {
+  if (pid() == target())
+    printf("%s <- %s %s\n", thread_indent(-1), ppfunc(), $$return);
+}
